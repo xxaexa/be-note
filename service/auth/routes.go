@@ -7,7 +7,6 @@ import (
 	"go-note/utils"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/go-playground/validator"
 	"github.com/gorilla/mux"
@@ -22,13 +21,12 @@ func NewHandler(store models.UserStore) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/login", h.handleLogin).Methods("POST")
-	router.HandleFunc("/register", h.handleRegister).Methods("POST")
-	router.HandleFunc("/user", h.handleGetUser).Methods("GET")
+	router.HandleFunc("/auth/login", h.handleLogin).Methods("POST")
+	router.HandleFunc("/auth/register", h.handleRegister).Methods("POST")
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	var user models.UserPayload
+	var user models.UserLoginPayload
 	if err := utils.ParseJSON(r, &user); err != nil {
 		utils.ResponseJSON(w, http.StatusBadRequest, err)
 		return
@@ -41,7 +39,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.store.GetUserByUsername(user.Username)
+	u, err := h.store.GetUserByEmail(user.Email)
 	if err != nil {
 		response := map[string]string{"message": "invalid username or password"}
 		utils.ResponseJSON(w, http.StatusBadRequest, response)
@@ -54,18 +52,24 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secret := []byte(os.Getenv("SCRT_KEY"))
+	secret := []byte(os.Getenv("SECRET_KEY"))
 	token, err := middlewares.CreateJWT(secret, u.ID)
 	if err != nil {
 		utils.ResponseJSON(w, http.StatusInternalServerError, err)
 		return
 	}
-
-	utils.ResponseJSON(w, http.StatusOK, map[string]string{"token": token})
+	response := map[string]interface{}{
+		"token": token,
+		"user": map[string]string{
+			"email":    u.Email,
+			"username": u.Username,
+		},
+	}
+	utils.ResponseJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
-	var user models.UserPayload
+	var user models.UserRegisterPayload
 	if err := utils.ParseJSON(r, &user); err != nil {
 		utils.ResponseJSON(w, http.StatusBadRequest, err)
 		return
@@ -77,21 +81,20 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if user exists
-	_, err := h.store.GetUserByUsername(user.Username)
+	_, err := h.store.GetUserByEmail(user.Email)
 	if err == nil {
 		utils.ResponseJSON(w, http.StatusBadRequest, fmt.Errorf("user with Username %s already exists", user.Username))
 		return
 	}
 
-	// hash password
 	hashedPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
 		utils.ResponseJSON(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	err = h.store.CreateUser(&models.UserPayload{
+	err = h.store.CreateUser(&models.UserRegisterPayload{
+		Email:    user.Email,
 		Username: user.Username,
 		Password: hashedPassword,
 	})
@@ -100,28 +103,6 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.ResponseJSON(w, http.StatusCreated, nil)
-}
-
-func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	str, ok := vars["userID"]
-	if !ok {
-		utils.ResponseJSON(w, http.StatusBadRequest, fmt.Errorf("missing user ID"))
-		return
-	}
-
-	userID, err := strconv.Atoi(str)
-	if err != nil {
-		utils.ResponseJSON(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
-		return
-	}
-
-	user, err := h.store.GetUserByID(userID)
-	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	utils.ResponseJSON(w, http.StatusOK, user)
+	response := map[string]string{"message": "register successfully"}
+	utils.ResponseJSON(w, http.StatusCreated, response)
 }
