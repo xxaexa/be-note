@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"go-note/middlewares"
 	"go-note/models"
 	"go-note/utils"
@@ -76,10 +77,10 @@ func (h *Handler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		utils.ResponseJSON(w, http.StatusBadRequest, errors.Error(), false)
 		return
 	}
-
+	fmt.Println(user.Email)
 	_, err := h.store.GetUserByEmail(user.Email)
 	if err == nil {
-		utils.ResponseJSON(w, http.StatusBadRequest, "username already exists", user.Username)
+		utils.ResponseJSON(w, http.StatusBadRequest, "email already exists", user.Email)
 		return
 	}
 
