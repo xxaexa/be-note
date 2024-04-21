@@ -75,7 +75,6 @@ func scanRowsIntoUser(rows *sql.Rows) (*models.User, error) {
 		&user.Email,
 		&user.Username,
 		&user.Password,
-		&user.Role,
 	)
 	if err != nil {
 		return nil, err

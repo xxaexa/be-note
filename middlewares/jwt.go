@@ -90,7 +90,7 @@ func validateJWT(tokenString string) (*jwt.Token, error) {
 }
 
 func permissionDenied(w http.ResponseWriter) {
-	utils.ResponseJSON(w, http.StatusForbidden, fmt.Errorf("permission denied"))
+	utils.ResponseJSON(w, http.StatusForbidden, "permission denied", false)
 }
 
 func GetUserIDFromContext(ctx context.Context) int {

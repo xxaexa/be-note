@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"go-note/models"
 	"go-note/utils"
 	"net/http"
@@ -26,21 +25,21 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	str, ok := vars["userID"]
 	if !ok {
-		utils.ResponseJSON(w, http.StatusBadRequest, fmt.Errorf("missing user ID"))
+		utils.ResponseJSON(w, http.StatusBadRequest, "missing user ID", false)
 		return
 	}
 
 	userID, err := strconv.Atoi(str)
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		utils.ResponseJSON(w, http.StatusBadRequest, "invalid user ID", false)
 		return
 	}
 
 	user, err := h.store.GetUserByID(userID)
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
+		utils.ResponseJSON(w, http.StatusInternalServerError, "error", err)
 		return
 	}
 
-	utils.ResponseJSON(w, http.StatusOK, user)
+	utils.ResponseJSON(w, http.StatusOK, "success", user)
 }

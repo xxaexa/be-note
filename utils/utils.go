@@ -28,11 +28,24 @@ func GetQueryID(r *http.Request) (int, error) {
 	return id, nil
 }
 
-func ResponseJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-	w.Header().Add("Content-Type", "application/json")
+func ResponseJSON(w http.ResponseWriter, code int, message string, data interface{}) {
+	response := make(map[string]interface{})
+	response["message"] = message
+
+	if data != nil && code >= 200 && code < 300 {
+		response["data"] = data
+	}
+
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error marshalling JSON"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write(response)
+	w.Write(jsonData)
 }
 
 func ParseJSON(r *http.Request, v any) error {

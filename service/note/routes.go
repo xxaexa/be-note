@@ -1,10 +1,12 @@
 package note
 
 import (
+	"database/sql"
 	"go-note/models"
 	"go-note/utils"
 	"net/http"
 
+	"github.com/go-playground/validator"
 	"github.com/gorilla/mux"
 )
 
@@ -20,88 +22,110 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/notes", h.HandleCreateNote).Methods("POST")
 	router.HandleFunc("/notes", h.HandleGetNotes).Methods("GET")
 	router.HandleFunc("/notes/{id}", h.HandleGetNoteByID).Methods("GET")
-	router.HandleFunc("/notes", h.HandleUpdateNote).Methods("PUT")
+	router.HandleFunc("/notes/{id}", h.HandleUpdateNote).Methods("PUT")
 	router.HandleFunc("/notes/{id}", h.HandleDeleteNote).Methods("DELETE")
 }
 
 func (h *Handler) HandleCreateNote(w http.ResponseWriter, r *http.Request) {
-	var note models.CreateNotePayload
+	var note models.NotePayload
 	if err := utils.ParseJSON(r, &note); err != nil {
-		response := map[string]string{"message": err.Error()}
-		utils.ResponseJSON(w, http.StatusBadRequest, response)
+		utils.ResponseJSON(w, http.StatusBadRequest, err.Error(), false)
+		return
+	}
+
+	if err := utils.Validate.Struct(note); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.ResponseJSON(w, http.StatusBadRequest, errors.Error(), false)
 		return
 	}
 
 	err := h.store.CreateNote(&note)
-
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
+		utils.ResponseJSON(w, http.StatusInternalServerError, err.Error(), false)
 		return
 	}
 
-	response := map[string]string{"message": "success"}
-	utils.ResponseJSON(w, http.StatusCreated, response)
+	utils.ResponseJSON(w, http.StatusCreated, "create success", false)
 }
 
 func (h *Handler) HandleGetNotes(w http.ResponseWriter, r *http.Request) {
 	notes, err := h.store.GetNotes()
-
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
+		utils.ResponseJSON(w, http.StatusInternalServerError, err.Error(), false)
 		return
 	}
 
-	utils.ResponseJSON(w, http.StatusOK, notes)
+	utils.ResponseJSON(w, http.StatusOK, "success", notes)
 }
 
 func (h *Handler) HandleGetNoteByID(w http.ResponseWriter, r *http.Request) {
 	id, err := utils.GetQueryID(r)
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusBadRequest, err)
+		utils.ResponseJSON(w, http.StatusBadRequest, err.Error(), false)
 		return
 	}
 
 	notes, err := h.store.GetNoteByID(id)
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
+		if err == sql.ErrNoRows {
+			utils.ResponseJSON(w, http.StatusNotFound, "note not found", false)
+			return
+		}
+		utils.ResponseJSON(w, http.StatusInternalServerError, err.Error(), false)
 		return
 	}
 
-	utils.ResponseJSON(w, http.StatusOK, notes)
+	utils.ResponseJSON(w, http.StatusOK, "success", notes)
 }
 
 func (h *Handler) HandleUpdateNote(w http.ResponseWriter, r *http.Request) {
-
-	var note models.Note
-	if err := utils.ParseJSON(r, &note); err != nil {
-		response := map[string]string{"message": err.Error()}
-		utils.ResponseJSON(w, http.StatusInternalServerError, response)
-		return
-	}
-
-	err := h.store.UpdateNote(&note)
+	id, err := utils.GetQueryID(r)
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
+		utils.ResponseJSON(w, http.StatusBadRequest, err.Error(), false)
 		return
 	}
 
-	response := map[string]string{"message": "success"}
-	utils.ResponseJSON(w, http.StatusOK, response)
+	var note models.NotePayload
+	if err := utils.ParseJSON(r, &note); err != nil {
+		utils.ResponseJSON(w, http.StatusBadRequest, err.Error(), false)
+		return
+	}
+
+	if err := utils.Validate.Struct(note); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.ResponseJSON(w, http.StatusBadRequest, errors.Error(), false)
+		return
+	}
+
+	err = h.store.UpdateNote(id, &note)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.ResponseJSON(w, http.StatusNotFound, "note not found", false)
+			return
+		}
+		utils.ResponseJSON(w, http.StatusInternalServerError, err.Error(), false)
+		return
+	}
+
+	utils.ResponseJSON(w, http.StatusOK, "update success", id)
 }
 
 func (h *Handler) HandleDeleteNote(w http.ResponseWriter, r *http.Request) {
 	id, err := utils.GetQueryID(r)
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
+		utils.ResponseJSON(w, http.StatusBadRequest, err.Error(), false)
 		return
 	}
 
 	err = h.store.DeleteNote(id)
 	if err != nil {
-		utils.ResponseJSON(w, http.StatusInternalServerError, err)
+		if err == sql.ErrNoRows {
+			utils.ResponseJSON(w, http.StatusNotFound, "note not found", false)
+			return
+		}
+		utils.ResponseJSON(w, http.StatusInternalServerError, err.Error(), false)
 		return
 	}
 
-	response := map[string]string{"message": "success"}
-	utils.ResponseJSON(w, http.StatusOK, response)
+	utils.ResponseJSON(w, http.StatusOK, "delete success", id)
 }

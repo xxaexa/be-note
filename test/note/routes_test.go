@@ -71,7 +71,7 @@ func TestNoteServiceHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("should fail creating a product if the payload is missing", func(t *testing.T) {
+	t.Run("should fail creating a note if the payload is missing", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPost, "/notes", nil)
 		if err != nil {
 			t.Fatal(err)
@@ -89,8 +89,8 @@ func TestNoteServiceHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("should handle creating a product", func(t *testing.T) {
-		payload := models.CreateNotePayload{
+	t.Run("should handle creating a note", func(t *testing.T) {
+		payload := models.NotePayload{
 			Title:       "test",
 			Description: "test description",
 			UserID:      1,
@@ -117,11 +117,77 @@ func TestNoteServiceHandlers(t *testing.T) {
 			t.Errorf("expected status code %d, got %d", http.StatusCreated, rr.Code)
 		}
 	})
+
+	t.Run("should fail updating a note if the payload is missing", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodPut, "/notes/1", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+
+		router.HandleFunc("/notes/{id}", handler.HandleUpdateNote).Methods("PUT")
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("expected status code %d, got %d", http.StatusBadRequest, rr.Code)
+		}
+	})
+
+	t.Run("should handle updating a note", func(t *testing.T) {
+		payload := models.NotePayload{
+			Title:       "test",
+			Description: "test description",
+			UserID:      1,
+		}
+
+		marshalled, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req, err := http.NewRequest(http.MethodPut, "/notes/1", bytes.NewBuffer(marshalled))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+
+		router.HandleFunc("/notes/{id}", handler.HandleUpdateNote).Methods(http.MethodPut)
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
+		}
+	})
+
+	t.Run("should handle deleting a note", func(t *testing.T) {
+
+		req, err := http.NewRequest(http.MethodDelete, "/notes/1", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+
+		router.HandleFunc("/notes/{id}", handler.HandleDeleteNote).Methods(http.MethodDelete)
+
+		router.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
+		}
+	})
 }
 
 type mockNoteStore struct{}
 
-func (m *mockNoteStore) CreateNote(note *models.CreateNotePayload) error {
+func (m *mockNoteStore) CreateNote(note *models.NotePayload) error {
 	return nil
 }
 
@@ -133,7 +199,7 @@ func (m *mockNoteStore) GetNoteByID(id int) (*models.Note, error) {
 	return &models.Note{}, nil
 }
 
-func (m *mockNoteStore) UpdateNote(note *models.Note) error {
+func (m *mockNoteStore) UpdateNote(id int, note *models.NotePayload) error {
 	return nil
 }
 

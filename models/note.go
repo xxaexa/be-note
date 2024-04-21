@@ -1,10 +1,10 @@
 package models
 
 type NoteStore interface {
-	CreateNote(*CreateNotePayload) error
+	CreateNote(*NotePayload) error
 	GetNotes() ([]*Note, error)
 	GetNoteByID(id int) (*Note, error)
-	UpdateNote(*Note) error
+	UpdateNote(id int, note *NotePayload) error
 	DeleteNote(id int) error
 }
 
@@ -15,7 +15,7 @@ type Note struct {
 	UserID      int    `json:"user_id" validate:"required"`
 }
 
-type CreateNotePayload struct {
+type NotePayload struct {
 	Title       string `json:"title" validate:"required"`
 	Description string `json:"description" validate:"required"`
 	UserID      int    `json:"user_id" validate:"required"`
