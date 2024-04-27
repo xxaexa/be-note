@@ -37,7 +37,7 @@ func TestAuthServiceHandlers(t *testing.T) {
 
 	t.Run("should handle register a user", func(t *testing.T) {
 		payload := models.UserRegisterPayload{
-			Email:    "test@mail.com",
+			Email:    "testxx@mail.com",
 			Username: "test",
 			Password: "123456",
 		}

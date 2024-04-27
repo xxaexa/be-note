@@ -2,6 +2,7 @@ package note
 
 import (
 	"database/sql"
+	"go-note/middlewares"
 	"go-note/models"
 	"go-note/utils"
 	"net/http"
@@ -19,11 +20,15 @@ func NewHandler(store models.NoteStore) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/notes", h.HandleCreateNote).Methods("POST")
-	router.HandleFunc("/notes", h.HandleGetNotes).Methods("GET")
-	router.HandleFunc("/notes/{id}", h.HandleGetNoteByID).Methods("GET")
-	router.HandleFunc("/notes/{id}", h.HandleUpdateNote).Methods("PUT")
-	router.HandleFunc("/notes/{id}", h.HandleDeleteNote).Methods("DELETE")
+
+	noteRouter := router.PathPrefix("/notes").Subrouter()
+	noteRouter.Use(middlewares.JWTMiddleware)
+
+	noteRouter.HandleFunc("/", h.HandleGetNotes).Methods("GET")
+	noteRouter.HandleFunc("/{id}", h.HandleGetNoteByID).Methods("GET")
+	noteRouter.HandleFunc("/{id}", h.HandleUpdateNote).Methods("PUT")
+	noteRouter.HandleFunc("/{id}", h.HandleDeleteNote).Methods("DELETE")
+
 }
 
 func (h *Handler) HandleCreateNote(w http.ResponseWriter, r *http.Request) {

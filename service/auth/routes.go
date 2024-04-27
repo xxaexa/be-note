@@ -99,6 +99,5 @@ func (h *Handler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		utils.ResponseJSON(w, http.StatusInternalServerError, "error", err)
 		return
 	}
-
 	utils.ResponseJSON(w, http.StatusCreated, "register successfully", false)
 }

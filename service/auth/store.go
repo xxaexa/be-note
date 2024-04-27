@@ -15,6 +15,7 @@ func NewStore(db *sql.DB) *Store {
 }
 
 func (s *Store) CreateUser(user *models.UserRegisterPayload) error {
+	fmt.Println(user, "call me coks")
 	sqlQuery := `INSERT INTO users (email, username, password) VALUES ($1, $2, $3)`
 	_, err := s.db.Exec(sqlQuery, user.Email, user.Username, user.Password)
 	if err != nil {
@@ -26,6 +27,7 @@ func (s *Store) CreateUser(user *models.UserRegisterPayload) error {
 
 func (s *Store) GetUserByEmail(email string) (*models.User, error) {
 	sqlQuery := `SELECT * FROM users WHERE email = $1`
+
 	rows, err := s.db.Query(sqlQuery, email)
 	if err != nil {
 		return nil, err
@@ -75,6 +77,7 @@ func scanRowsIntoUser(rows *sql.Rows) (*models.User, error) {
 		&user.Email,
 		&user.Username,
 		&user.Password,
+		&user.Role,
 	)
 	if err != nil {
 		return nil, err

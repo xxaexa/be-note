@@ -3,11 +3,10 @@ package middlewares
 import (
 	"context"
 	"fmt"
-	"go-note/models"
 	"go-note/utils"
-	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"strconv"
 	"time"
@@ -19,48 +18,38 @@ type contextKey string
 
 const UserKey contextKey = "userID"
 
-func WithJWTAuth(handlerFunc http.HandlerFunc, store models.UserStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tokenString := utils.GetTokenFromRequest(r)
+func JWTMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		bearerToken := strings.Split(authHeader, " ")
 
-		token, err := validateJWT(tokenString)
+		if len(bearerToken) != 2 {
+			http.Error(w, "Unauthorized - No token provided", http.StatusUnauthorized)
+			return
+		}
+
+		tokenStr := bearerToken[1]
+		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(os.Getenv("SECRET_KEY")), nil
+		})
+
 		if err != nil {
-			log.Printf("failed to validate token: %v", err)
-			permissionDenied(w)
+			http.Error(w, "Unauthorized - Error parsing token: "+err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		if !token.Valid {
-			log.Println("invalid token")
-			permissionDenied(w)
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			fmt.Println("Claims:", claims)
+		} else {
+			http.Error(w, "Unauthorized - Invalid token", http.StatusUnauthorized)
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		str := claims["userID"].(string)
-
-		userID, err := strconv.Atoi(str)
-		if err != nil {
-			log.Printf("failed to convert userID to int: %v", err)
-			permissionDenied(w)
-			return
-		}
-
-		u, err := store.GetUserByID(userID)
-		if err != nil {
-			log.Printf("failed to get user by id: %v", err)
-			permissionDenied(w)
-			return
-		}
-
-		// Add the user to the context
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, UserKey, u.ID)
-		r = r.WithContext(ctx)
-
-		// Call the function if the token is valid
-		handlerFunc(w, r)
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func CreateJWT(secret []byte, userID int) (string, error) {
@@ -85,7 +74,7 @@ func validateJWT(tokenString string) (*jwt.Token, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
-		return []byte(os.Getenv("SCRT_KEY")), nil
+		return []byte(os.Getenv("SECRET_KEY")), nil
 	})
 }
 
