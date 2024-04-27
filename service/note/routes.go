@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	noteRouter := router.PathPrefix("/notes").Subrouter()
 	noteRouter.Use(middlewares.JWTMiddleware)
 
+	noteRouter.HandleFunc("/", h.HandleCreateNote).Methods("POST")
 	noteRouter.HandleFunc("/", h.HandleGetNotes).Methods("GET")
 	noteRouter.HandleFunc("/{id}", h.HandleGetNoteByID).Methods("GET")
 	noteRouter.HandleFunc("/{id}", h.HandleUpdateNote).Methods("PUT")
